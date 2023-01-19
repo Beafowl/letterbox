@@ -1,11 +1,20 @@
 import os
-
 import tensorflow as tf
+import numpy as np
+import cv2
 import matplotlib.pyplot as plt
+
+# parameters that can be adjusted
+
+WIDTH = 256
+HEIGHT = 256
+USE_GRAYSCALE = False
 
 # input: pixel values, image with classifications (berk, oma, malik, papa, mama)
 
 class_names = ['berk', 'oma', 'malik', 'papa', 'mama']
+
+
 
 # before training, every image needs to be labeled with a class (TODO)
 # in this case, we need to consider the dimensions of the images for the microcontroller (resolution, rgb vs grayscale etc.)
