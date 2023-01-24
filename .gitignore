@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# ignore saved neural network
+nn/
+
 # do not upload images
 *.jpg
 *.png

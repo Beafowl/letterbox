@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 WIDTH = 256
 HEIGHT = 256
-USE_GRAYSCALE = True
+USE_GRAYSCALE = False
 IMAGES_PER_CLASS = 30
 CLASS_AMOUNT = 5
 
@@ -39,7 +39,7 @@ def create_model():
 
         # load images and adjust dimension (TODO)
 
-        train_images = np.zeros(shape=(class_names.size, IMAGES_PER_CLASS, WIDTH, HEIGHT), dtype='uint8')
+        train_images = np.zeros(shape=(class_names.size, IMAGES_PER_CLASS, WIDTH, HEIGHT, 3), dtype='uint8')
         train_labels = np.zeros(shape=(class_names.size, IMAGES_PER_CLASS, class_names.size), dtype='uint8')
 
         directory = '..\\data\\train'
@@ -59,30 +59,40 @@ def create_model():
 
                         # TODO: Normalize images
 
-                        #img[:] = img[:] / 256
-                        cv2.normalize(img, img, 0, 1, cv2.NORM_MINMAX)
+                        img = img / 256
+                        #cv2.normalize(img, img, 0, 1, cv2.NORM_MINMAX)
 
                         train_images[(class_index, i)] = img
                         train_labels[(class_index, i)] = np.eye(class_names.size)[class_index]
 
         # train_images has dimension (30, 256, 256, 3)
+        # reshape?
 
+        train_images = tf.reshape(train_images, [WIDTH, HEIGHT, 3])
+        train_labels = tf.reshape(train_labels, [class_names.size])
 
         # create model
         model = keras.models.Sequential()
 
-        model.add(layers.Conv2D(32, (3,3), strides=(1,1), padding='valid', activation='relu', input_shape=(WIDTH, HEIGHT, 1))) # adjust input shape when images are ready and library on the microcontroller is set
-        model.add(layers.MaxPool2D((2,2)))
+        model.add(layers.Input((WIDTH, HEIGHT, 3)))
 
-        model.add(layers.Conv2D(32, 3, activation='relu')) # adjust input shape when images are ready and library on the microcontroller is set
-        model.add(layers.MaxPool2D((2,2)))
+        model.add(layers.Conv2D(64, (3,3))) # adjust input shape when images are ready and library on the microcontroller is set
+        model.add(layers.Activation('relu'))
+        model.add(layers.MaxPooling2D(pool_size=(2,2)))
+
+        model.add(layers.Conv2D(127, (3,3))) # adjust input shape when images are ready and library on the microcontroller is set
+        model.add(layers.Activation('relu'))
+        model.add(layers.MaxPooling2D(pool_size=(2,2)))
 
         model.add(layers.Flatten())
-        model.add(layers.Dense(64, activation='relu'))
+        model.add(layers.Dense(64))
+
+        model.add(layers.Activation('relu'))
 
         model.add(layers.Dense(class_names.size))
+        model.add(layers.Activation('sigmoid'))
 
-        loss = keras.losses.CategoricalCrossentropy(from_logits=True)
+        loss = keras.losses.CategoricalCrossentropy()
         optim = keras.optimizers.Adam(learning_rate=0.001)
         metrics = ['accuracy']
 
@@ -90,39 +100,45 @@ def create_model():
 
         # train the model
 
-        batch_size = 64
-        epochs = 5
-
-        cv2.imshow('xd', train_images[(0,0)])
-        cv2.waitKey(0)
-
-        for class_index in range(0, class_names.size):
-
-                model.fit(train_images[class_index], train_labels[class_index], epochs=epochs, batch_size=batch_size, verbose=2)
+        batch_size = 1
+        epochs = 1
 
         print(model.summary())
 
-        # save the model
+        model.fit(train_images[class_index], train_labels[class_index], epochs=epochs, batch_size=batch_size, verbose=2, validation_split=0.1)
 
-        model.save("nn")
-        #model.save_weights("nn_weights")
+        # check if the model accepts an image
 
-        # json_string = model.to_json()
+        try:
 
+                prediction = model.predict(train_images[(0,0)])
+                print(prediction)
+
+        except Exception as e:
+                print(e)
+
+        else:
+                # save the model
+                model.save("nn")
+                #model.save_weights("nn_weights")
+
+                # json_string = model.to_json()
 def predict():
 
-        for class_index in range(0, class_names.size):
+        test_images = np.zeros(shape=(class_names.size, TEST_IMAGES_AMOUNT, WIDTH, HEIGHT, 3), dtype='uint8')
+        test_labels = np.zeros(shape=(class_names.size, TEST_IMAGES_AMOUNT, class_names.size), dtype='uint8')
+
+        # something weird happens at i = 4
+        for class_index in range(0, class_names.size-1):
 
                 # load old img
 
                 directory = '..\\data\\test'
                 batch_size = 5
 
-                test_images = np.zeros(shape=(class_names.size, TEST_IMAGES_AMOUNT, WIDTH, HEIGHT), dtype='uint8')
-                test_labels = np.zeros(shape=(class_names.size, TEST_IMAGES_AMOUNT, class_names.size), dtype='uint8')
-
                 imagefolder = os.path.join(directory, class_names[class_index])
 
+                
                 for i in range(0, TEST_IMAGES_AMOUNT):
 
                         imagepath = os.path.join(imagefolder, f'{i}.jpg')
@@ -145,21 +161,26 @@ def predict():
 
                         #cv2.imshow('xd', test_images[(class_index, i)])
                         #cv2.waitKey(0)
-                        print(len(test_images[3]))
+                        #print(len(test_images[3]))
 
+        model = keras.models.load_model('nn')
 
-        #model = keras.models.load_model('nn')
+        print(model.summary())
 
         #for class_index in range(0, class_names.size):
         #        model.evaluate(test_images[class_index], test_labels[class_index], batch_size=batch_size, verbose=2)
         
-        print(test_images[(3,0)].shape)
+        #print(test_images[(3,0)].shape)
 
-        cv2.imshow("xd", test_images[(3,0)])
+        #cv2.imshow("xd", test_images[(3,0)])
+        #cv2.waitKey(0)
+
+        print(test_images[(3,1)].shape)
+        cv2.imshow('xd', test_images[(3,1)])
         cv2.waitKey(0)
 
-        #prediction = model.predict(test_images[(0,0)])
-        #print(prediction)
+        prediction = model.predict(test_images[(3,1)])
+        print(prediction)
 
 if __name__ == '__main__':
 
